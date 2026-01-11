@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Library REST Frontend</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h2 { margin-top: 30px; }
+        label { display: block; margin-top: 10px; }
+        input { margin: 5px 0; padding: 5px; width: 200px; }
+        button { margin: 5px 0; padding: 5px 10px; cursor: pointer; }
+        ul { list-style-type: none; padding-left: 0; }
+        li { margin: 5px 0; }
+    </style>
+</head>
+<body>
+
+<h1>Library Management (REST)</h1>
+
+<div>
+    <h2>Books</h2>
+    <ul id="bookList"></ul>
+
+    <h3>Add / Edit Book</h3>
+    <label for="bookId">ID (for edit):</label>
+    <input id="bookId" placeholder="ID (for edit)" />
+    <label for="bookTitle">Title:</label>
+    <input id="bookTitle" placeholder="Title" />
+    <label for="bookYear">Year:</label>
+    <input id="bookYear" placeholder="Year" />
+    <label for="bookAuthorId">Author ID:</label>
+    <input id="bookAuthorId" placeholder="Author ID" />
+    <button onclick="createOrUpdateBook()">Save Book</button>
+</div>
+
+<hr>
+
+<div>
+    <h2>Authors</h2>
+    <ul id="authorList"></ul>
+
+    <h3>Add / Edit Author</h3>
+    <label for="authorId">ID (for edit):</label>
+    <input id="authorId" placeholder="ID (for edit)" />
+    <label for="authorName">Name:</label>
+    <input id="authorName" placeholder="Name" />
+    <label for="authorBirthYear">Birth Year:</label>
+    <input id="authorBirthYear" placeholder="Birth Year" />
+    <button onclick="createOrUpdateAuthor()">Save Author</button>
+</div>
+
+<script>
+    const bookApi = 'http://localhost:8080/books';
+    const authorApi = 'http://localhost:8080/authors';
+
+    async function loadBooks() {
+        const res = await fetch(bookApi);
+        const books = await res.json();
+        const list = document.getElementById('bookList');
+        list.innerHTML = '';
+        books.forEach(b => {
+            const li = document.createElement('li');
+            li.textContent = `${b.id} - ${b.title} (${b.year}) Author ID: ${b.author?.id || ''}`;
+
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Edit';
+            editBtn.style.marginLeft = '10px';
+            editBtn.onclick = () => {
+                document.getElementById('bookId').value = b.id;
+                document.getElementById('bookTitle').value = b.title;
+                document.getElementById('bookYear').value = b.year;
+                document.getElementById('bookAuthorId').value = b.author?.id || '';
+            };
+
+            const delBtn = document.createElement('button');
+            delBtn.textContent = 'Delete';
+            delBtn.style.marginLeft = '5px';
+            delBtn.onclick = () => deleteBook(b.id);
+
+            li.appendChild(editBtn);
+            li.appendChild(delBtn);
+            list.appendChild(li);
+        });
+    }
+
+    async function createOrUpdateBook() {
+        const id = document.getElementById('bookId').value;
+        const book = {
+            title: document.getElementById('bookTitle').value,
+            year: parseInt(document.getElementById('bookYear').value),
+            author: { id: parseInt(document.getElementById('bookAuthorId').value) }
+        };
+        if (id) {
+            await fetch(`${bookApi}/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(book) });
+        } else {
+            await fetch(bookApi, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(book) });
+        }
+        clearBookForm();
+        await loadBooks();
+    }
+
+    async function deleteBook(id) {
+        await fetch(`${bookApi}/${id}`, { method: 'DELETE' });
+        await loadBooks();
+    }
+
+    function clearBookForm() {
+        document.getElementById('bookId').value = '';
+        document.getElementById('bookTitle').value = '';
+        document.getElementById('bookYear').value = '';
+        document.getElementById('bookAuthorId').value = '';
+    }
+
+    async function loadAuthors() {
+        const res = await fetch(authorApi);
+        const authors = await res.json();
+        const list = document.getElementById('authorList');
+        list.innerHTML = '';
+        authors.forEach(a => {
+            const li = document.createElement('li');
+            li.textContent = `${a.id} - ${a.name} (${a.birthYear})`;
+
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Edit';
+            editBtn.style.marginLeft = '10px';
+            editBtn.onclick = () => {
+                document.getElementById('authorId').value = a.id;
+                document.getElementById('authorName').value = a.name;
+                document.getElementById('authorBirthYear').value = a.birthYear;
+            };
+
+            const delBtn = document.createElement('button');
+            delBtn.textContent = 'Delete';
+            delBtn.style.marginLeft = '5px';
+            delBtn.onclick = () => deleteAuthor(a.id);
+
+            li.appendChild(editBtn);
+            li.appendChild(delBtn);
+            list.appendChild(li);
+        });
+    }
+
+    async function createOrUpdateAuthor() {
+        const id = document.getElementById('authorId').value;
+        const author = {
+            name: document.getElementById('authorName').value,
+            birthYear: parseInt(document.getElementById('authorBirthYear').value)
+        };
+        if (id) {
+            await fetch(`${authorApi}/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(author) });
+        } else {
+            await fetch(authorApi, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(author) });
+        }
+        clearAuthorForm();
+        await loadAuthors();
+    }
+
+    async function deleteAuthor(id) {
+        await fetch(`${authorApi}/${id}`, { method: 'DELETE' });
+        await loadAuthors();
+    }
+
+    function clearAuthorForm() {
+        document.getElementById('authorId').value = '';
+        document.getElementById('authorName').value = '';
+        document.getElementById('authorBirthYear').value = '';
+    }
+
+    // Инициализация
+    (async function init() {
+        await loadAuthors();
+        await loadBooks();
+    })();
+</script>
+
+</body>
+</html>
