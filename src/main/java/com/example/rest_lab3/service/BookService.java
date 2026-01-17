@@ -1,31 +1,37 @@
 package com.example.rest_lab3.service;
 
-import com.example.rest_lab3.email.EmailNotifier;
 import com.example.rest_lab3.model.Book;
 import com.example.rest_lab3.repository.BookRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.rest_lab3.jms.ChangeEventProducer;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class BookService {
 
-    @Autowired
-    private BookRepository bookRepository;
+    private final BookRepository bookRepository;
+    private final ChangeEventProducer changeEventProducer;
 
-    @Autowired
-    private EmailNotifier emailNotifier;
+    public BookService(BookRepository bookRepository, ChangeEventProducer changeEventProducer) {
+        this.bookRepository = bookRepository;
+        this.changeEventProducer = changeEventProducer;
+    }
 
     public Book create(Book book) {
         Book saved = bookRepository.save(book);
-        emailNotifier.sendChange("Book", saved.getId(), "INSERT", saved);
+        changeEventProducer.sendChange(saved, "INSERT");
         return saved;
     }
 
-    public Book update(Book book) {
+    public Book update(Long id, Book bookDetails) {
+        Book book = bookRepository.findById(id).orElseThrow(() -> new RuntimeException("Book not found"));
+        book.setTitle(bookDetails.getTitle());
+        book.setYear(bookDetails.getYear());
+        book.setAuthor(bookDetails.getAuthor());
         Book updated = bookRepository.save(book);
-        emailNotifier.sendChange("Book", updated.getId(), "UPDATE", updated);
+        changeEventProducer.sendChange(updated, "UPDATE");
         return updated;
     }
 
@@ -33,12 +39,12 @@ public class BookService {
         Book book = bookRepository.findById(id).orElse(null);
         if (book != null) {
             bookRepository.deleteById(id);
-            emailNotifier.sendChange("Book", id, "DELETE", book);
+            changeEventProducer.sendChange(book, "DELETE");
         }
     }
 
-    public Book getById(Long id) {
-        return bookRepository.findById(id).orElse(null);
+    public Optional<Book> getById(Long id) {
+        return bookRepository.findById(id);
     }
 
     public List<Book> getAll() {

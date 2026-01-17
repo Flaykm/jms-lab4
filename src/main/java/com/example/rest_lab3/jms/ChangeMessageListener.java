@@ -1,5 +1,6 @@
-package com.example.rest_lab3.email;
+package com.example.rest_lab3.jms;
 
+import com.example.rest_lab3.email.EmailNotifier;
 import com.example.rest_lab3.model.Book;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Component;
@@ -24,12 +25,14 @@ public class ChangeMessageListener {
         Object detailsObj = payload.get("details");
         if ("Book".equals(entityName) && detailsObj instanceof Book book) {
             if (book.getYear() >= 2027) {
+                // Исправлено: теперь 3 аргумента: получатель, тема, тело письма
                 emailNotifier.sendEmail(
-                        "Ошибка: некорректный год",
+                        "flaykmax@gmail.com", // получатель
+                        "Ошибка: некорректный год", // тема
                         "Книга: " + book.getTitle() +
                                 "\nID: " + entityId +
                                 "\nТип изменения: " + changeType +
-                                "\nГод выпуска: " + book.getYear()
+                                "\nГод выпуска: " + book.getYear() // тело
                 );
             }
         }

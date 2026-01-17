@@ -1,10 +1,10 @@
 package com.example.rest_lab3.service;
 
-import com.example.rest_lab3.jms.ChangeMessageSender;
 import com.example.rest_lab3.model.Author;
 import com.example.rest_lab3.model.Book;
 import com.example.rest_lab3.repository.AuthorRepository;
 import com.example.rest_lab3.repository.BookRepository;
+import com.example.rest_lab3.jms.ChangeEventProducer;
 import com.example.rest_lab3.email.EmailNotifier;
 import org.springframework.stereotype.Service;
 
@@ -16,16 +16,16 @@ public class AuthorService {
 
     private final AuthorRepository authorRepository;
     private final BookRepository bookRepository;
-    private final ChangeMessageSender changeMessageSender;
+    private final ChangeEventProducer changeEventProducer;
     private final EmailNotifier emailNotifier;
 
     public AuthorService(AuthorRepository authorRepository,
                          BookRepository bookRepository,
-                         ChangeMessageSender changeMessageSender,
+                         ChangeEventProducer changeEventProducer,
                          EmailNotifier emailNotifier) {
         this.authorRepository = authorRepository;
         this.bookRepository = bookRepository;
-        this.changeMessageSender = changeMessageSender;
+        this.changeEventProducer = changeEventProducer;
         this.emailNotifier = emailNotifier;
     }
 
@@ -39,7 +39,7 @@ public class AuthorService {
 
     public Author create(Author author) {
         Author saved = authorRepository.save(author);
-        changeMessageSender.sendChange("Author", saved.getId(), "INSERT", saved.toString());
+        changeEventProducer.sendChange("Author", saved.getId(), "INSERT", saved.toString());
         return saved;
     }
 
@@ -51,22 +51,25 @@ public class AuthorService {
         author.setBirthYear(authorDetails.getBirthYear());
 
         Author updated = authorRepository.save(author);
-        changeMessageSender.sendChange("Author", updated.getId(), "UPDATE", updated.toString());
+        changeEventProducer.sendChange("Author", updated.getId(), "UPDATE", updated.toString());
         return updated;
     }
 
     public void delete(Long id) {
         authorRepository.deleteById(id);
-        changeMessageSender.sendChange("Author", id, "DELETE", "");
+        changeEventProducer.sendChange("Author", id, "DELETE", "");
     }
 
-    // Сохранение книги (если нужно из AuthorService)
     public Book saveBook(Book book) {
         Book saved = bookRepository.save(book);
-        changeMessageSender.sendChange(saved, "INSERT");
+        changeEventProducer.sendChange(saved, "INSERT");
 
-        if (saved.getYear() != null && saved.getYear() > 2027) {
-            emailNotifier.sendFutureBookAlert(saved);
+        if (saved.getYear() != null && saved.getYear() >= 2027) {
+            emailNotifier.sendEmail(
+                    "flaykmax@gmail.com",
+                    "Ошибка: некорректный год книги",
+                    "Книга: " + saved.getTitle() + "\nГод: " + saved.getYear()
+            );
         }
 
         return saved;
